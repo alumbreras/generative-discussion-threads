@@ -1,13 +1,7 @@
-# Functions defined by Hadley and contributors in the ggplot2 site
-#
-#
-
-library(ggplot2)
 library(gridExtra)
 library(grid)
-library(igraph)
 
-
+#' @description plots grid of ggplots
 grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, position = c("bottom", "right")) {
 
   plots <- list(...)

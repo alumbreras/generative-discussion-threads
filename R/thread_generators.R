@@ -34,6 +34,32 @@ gen.thread.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
   g
 }
 
+#' @title Generate parents vector
+#' @description parent vector is a tree encoded as a vector where a position i
+#' encodes the parent of the node i
+gen.parentsvector.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
+
+  pis <- rep(NA, n-1)
+
+  # First post has no choice
+  pis[1] <- 1
+
+  for (i in 2:n){
+    betas <- c(beta, rep(0, i-1))
+    lags <- i:1
+    popularities <- tabulate(pis, nbins=i) + 1 # even root starts with degree 1
+
+    # Probability of choosing every node (only one is chosen)
+    probs <- alpha * popularities + betas + tau^lags
+    probs <- probs/sum(probs)
+    j <- sample(1:length(probs), 1, prob=probs)
+
+    # Add new vertex attached to the chosen node
+    pis[i] <- j
+  }
+  pis
+}
+
 
 #' Generates a tree given its posts authors
 #' and the estimated parameters of the model (Lumbreras 2016)
@@ -84,7 +110,7 @@ gen.thread.Lumbreras2016 <- function(users, alphas, betas, taus){
   g
 }
 
-
+#' @title Tree from parent vectors
 #  Build a real graph tree from a vector of parents
 # 'params parent parents vector 2:N
 tree_from_parents_vector <- function(parents){

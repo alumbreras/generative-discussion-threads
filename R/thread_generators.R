@@ -51,11 +51,14 @@ gen.parentsvector.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
 
     # Probability of choosing every node (only one is chosen)
     probs <- alpha * popularities + betas + tau^lags
-    probs <- probs/sum(probs)
-    j <- sample(1:length(probs), 1, prob=probs)
+    if(sum(probs) == 0) {
+      probs = rep(1/i, i)
+    } else {
+      probs <- probs/sum(probs)
+    }
 
     # Add new vertex attached to the chosen node
-    pis[i] <- j
+    pis[i] <- sample(1:length(probs), 1, prob=probs)
   }
   pis
 }
@@ -121,16 +124,30 @@ tree_from_parents_vector <- function(parents){
 }
 
 
+#' @title Dataframe from parents vector
+#' @description  build a dataframe from a parents vector. The dataset reflects
+#' the choice made at every timestep and is a convenient format to compute the likelihood
+parentsvector.to.dataframe <- function(pis){
+  popularities <- c(1,sapply(2:length(pis), function(t) 1 + sum(pis[1:(t-1)]==pis[t])))
+  posts <- 2:(length(pis)+1)
+  data <- data.frame(post = posts,
+                     t = 1:(length(pis)),
+                     parent = pis) %>%
+          mutate(popularity = popularities,
+                 lag = t-parent+1,
+                 root = ifelse(parent == 1, 1, 0))
+  data
+}
+
+# Creates a dataframe with a row per post
+# and columns "degree of parent", "is_parent_root", "lag to parent", and "t"
+# With the model parameters, the three first columns are used to compute the numerator the likelihood
+# and 't' to compute the denominator of the likelihood
 tree.to.data <- function(g, thread=0){
-  # Creates a dataframe with a row per post
-  # and columns "degree of parent", "is_parent_root", "lag to parent", and "t"
-  # With the model parameters, the three first columns are used to compute the numerator the likelihood
-  # and 't' to compute the denominator of the likelihood
 
   parents <- get.edgelist(g, names=FALSE)[,2] # parents vector without the first two posts
   authors <- V(g)$user[-1] # remove first post
   popularities <- c(1,sapply(2:length(parents), function(t) 1 + sum(parents[1:(t-1)]==parents[t])))
-  #popularities[parents==1] <- popularities[parents==1]-1 # the root node has no parent
   posts <- 2:(length(parents)+1)
   data <- data.frame(thread = rep(thread, length(posts)),
                      user = authors,

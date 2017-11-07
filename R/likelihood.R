@@ -32,24 +32,29 @@ likelihood_post <- function(row, params){
 #' won't know how to deal with that
 #' @export
 # x100 times faster (for large dataframes)
-likelihood_Gomez2013 <- function(data, params){
+likelihood_Gomez2013 <- function(df.trees, params){
   alpha <- params$alpha
   beta <- params$beta
-  tau <- params$tau
-  sum(log(alpha*data['popularity'] + beta*data['root'] + tau^data['lag']))-
-  sum(log(alpha*(2*data['t']-1)   + beta + tau*(tau^data['t']-1)/(tau-1)))
+  tau <- max(params$tau, 0.999999999) # avoid 1 so that we can keep using the 
+                                      # geometric series expansion
+  sum(log(alpha*df.trees['popularity'] + beta*df.trees['root'] + tau^df.trees['lag']))-
+  sum(log(2*alpha*(df.trees['t']-1)   + beta + tau*(tau^df.trees['t']-1)/(tau-1)))
   # TODO: review carefully the normalization factor
+  # 2* because we consider undirected graph
+  # -1 because root has no outcoming edge
 }
 
 # like Gomez 2013 but does not make the sum
 #' Needed during the EM for matrix computations
 #' @param params list of parameters
-likelihood_Gomez2013_all <- function(data, params){
+likelihood_Gomez2013_all <- function(df.trees, params){
   alpha <- params$alpha
   beta <- params$beta
-  tau <- params$tau
-  log(alpha*data['popularity'] + beta*data['root'] + tau^data['lag'])-
-    log(2*alpha*(data['t']-1)   + beta + tau*(tau^data['t']-1)/(tau-1))
+  tau <- max(params$tau, 0.999999999) # avoid 1 so that we can keep using the 
+                                      # geometric series expansion
+  
+  log(alpha*df.trees['popularity'] + beta*df.trees['root'] + tau^df.trees['lag'])-
+    log(2*alpha*(df.trees['t']-1)   + beta + tau*(tau^df.trees['t']-1)/(tau-1))
 
 }
 

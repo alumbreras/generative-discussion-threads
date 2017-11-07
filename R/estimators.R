@@ -7,14 +7,6 @@ library(doParallel)
 estimation_Gomez2013 <- function(df.trees, params=list(alpha=0.5, beta=0.5, tau=0.5)){
 
   df.trees <- df.trees %>% select(t, popularity, lag, root)
-  # Remove t=1 to avoid strange things like NA
-  # stop if some user is lost in the process
-  # (users that only have replies to root)
-  users.before <- length(unique(df.trees$user))
-  df.trees <- df.trees %>% filter(t>1)
-  users.after <- length(unique(df.trees$user))
-  if(users.before != users.after) warning("Remove users that only reply to root")
-
 
   Qopt <- function(params, df.trees){
     params <- list(alpha = params[1], beta=params[2], tau=params[3])
@@ -108,7 +100,7 @@ estimation_Lumbreras2016 <- function(data, params, niters=10){
 
     cat("\n**********ITERATION**********: ", iter, "\n")
 
-    # EXPECTATION --------------------------------------------------------------
+    # Expectation --------------------------------------------------------------
     # Given the parameters of each cluster,
     # find the responsability of each user in each clusteR
     cat("\nExpectation...")
@@ -121,7 +113,7 @@ estimation_Lumbreras2016 <- function(data, params, niters=10){
 
     cat("\nCluster distribution (1:5):\n", head(colSums(responsibilities)),5)
 
-    # MAXIMIZATION -------------------------------------------------------------
+    # Maximization -------------------------------------------------------------
     # Given the current responsibilities and pis, find the best parameters for each cluster
     cat("\nMaximization...")
     # Parallel optimization for cluster k=1,...,K
@@ -155,7 +147,7 @@ estimation_Lumbreras2016 <- function(data, params, niters=10){
     cat("\ntaus (1:5):", head(taus,5))
 
 
-    # EVALUATION OF FULL LIKELIHOOD p(X, Z | \theta) --------------------------
+    # Evaluation of complete likelihood p(X, Z | \theta) -----------------------
     # this should be monotonically increasing
 
     # Q (sum of component Q's). Should be monotonically increasing

@@ -45,9 +45,14 @@ gen.parentsvector.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
   pis[1] <- 1
 
   for (i in 2:n){
+
     betas <- c(beta, rep(0, i-1))
-    lags <- i:1
-    popularities <- tabulate(pis, nbins=i) + 1 # even root starts with degree 1
+    # Note that the latest post has lag = 0
+    lags <- (i-1):0
+    # We consider an undirected graph, and every existing node has degree equal to one initially
+    popularities    <- 1 + tabulate(pis, nbins=i)
+    # but root has no outcoming link
+    popularities[1] <- popularities[1] -1
 
     # Probability of choosing every node (only one is chosen)
     probs <- alpha * popularities + betas + tau^lags
@@ -56,9 +61,9 @@ gen.parentsvector.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
     } else {
       probs <- probs/sum(probs)
     }
-
+    #cat("\nprobs:", probs)
     # Add new vertex attached to the chosen node
-    pis[i] <- sample(1:length(probs), 1, prob=probs)
+    pis[i] <- sample(length(probs), size=1, prob=probs)
   }
   pis
 }
@@ -128,11 +133,12 @@ parents_to_tree <- function(parents){
 #' @description  build a dataframe from a parents vector. The dataset reflects
 #' the choice made at every timestep and is a convenient format to compute the likelihood
 parents_to_dataframe <- function(parents){
-  popularities <- c(1,sapply(2:length(pis), function(t) 1 + sum(pis[1:(t-1)]==pis[t])))
-  posts <- 2:(length(pis)+1)
+  popularities <- c(1,sapply(2:length(parents), 
+                             function(t) 1 + sum(parents[1:(t-1)]==parents[t])))
+  posts <- 2:(length(parents)+1)
   df <- data.frame(post = posts,
-                     t = 1:(length(pis)),
-                     parent = pis) %>%
+                     t = 1:(length(parents)),
+                     parent = parents) %>%
           mutate(popularity = popularities,
                  lag = t-parent+1,
                  root = ifelse(parent == 1, 1, 0))

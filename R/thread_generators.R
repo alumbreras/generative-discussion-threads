@@ -116,7 +116,7 @@ gen.thread.Lumbreras2016 <- function(users, alphas, betas, taus){
 #' @title Tree from parent vectors
 #  Build a real graph tree from a vector of parents
 # 'params parent parents vector 2:N
-tree_from_parents_vector <- function(parents){
+parents_to_tree <- function(parents){
   size <- length(parents)+1
   g <- graph.empty(n=size)
   edges <- t(rbind(2:size, parents))
@@ -127,17 +127,27 @@ tree_from_parents_vector <- function(parents){
 #' @title Dataframe from parents vector
 #' @description  build a dataframe from a parents vector. The dataset reflects
 #' the choice made at every timestep and is a convenient format to compute the likelihood
-parentsvector.to.dataframe <- function(pis){
+parents_to_dataframe <- function(parents){
   popularities <- c(1,sapply(2:length(pis), function(t) 1 + sum(pis[1:(t-1)]==pis[t])))
   posts <- 2:(length(pis)+1)
-  data <- data.frame(post = posts,
+  df <- data.frame(post = posts,
                      t = 1:(length(pis)),
                      parent = pis) %>%
           mutate(popularity = popularities,
                  lag = t-parent+1,
                  root = ifelse(parent == 1, 1, 0))
-  data
+  df
 }
+
+all_parents_to_dataframe <- function(pis_list){
+  df.list <- list()
+  for(i in 1:length(pis_list)){
+    df.list[[i]] <- parents_to_dataframe(pis_list[[i]])
+  }
+  as.data.frame(rbindlist(df.list))
+}
+
+
 
 # Creates a dataframe with a row per post
 # and columns "degree of parent", "is_parent_root", "lag to parent", and "t"

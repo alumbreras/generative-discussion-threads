@@ -23,7 +23,7 @@ gen.thread.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
     popularities <- 1 + degree(g, mode="in") # even root starts with degree 1
 
     # Probability of choosing every node (only one is chosen)
-    probs <- alpha*popularities[1:(i-1)] + betas + tau^lags
+    probs <- alpha*popularities[1:(i-1)] + betas + tau^lags # the good one
     probs <- probs/sum(probs)
     j <- sample(1:length(probs), 1, prob=probs)
 
@@ -55,7 +55,10 @@ gen.parentsvector.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
     popularities[1] <- popularities[1] -1
 
     # Probability of choosing every node (only one is chosen)
-    probs <- alpha * popularities + betas + tau^lags
+    # probs <- alpha * popularities + betas + tau^lags # classic
+    probs <- alpha*popularities^alpha + betas + tau^lags # kiosque
+    #probs <- alpha*popularities^alpha + betas + lags^(1*tau) # kiosque
+    
     if(sum(probs) == 0) {
       probs = rep(1/i, i)
     } else {
@@ -126,6 +129,10 @@ parents_to_tree <- function(parents){
   g <- graph.empty(n=size)
   edges <- t(rbind(2:size, parents))
   graph_from_edgelist(edges)
+}
+
+tree_to_parents <- function(gtree){
+  stop("Not implemented yet")
 }
 
 

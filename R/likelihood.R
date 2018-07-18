@@ -14,12 +14,9 @@ library(parallel)
 #' @param tau recency parameter
 #' @return loglikelihood of the post
 #' @export
-likelihood_post <- function(row, params){
-  alpha <- params$alpha
-  beta <- params$beta
-  tau <- params$tau
-
-  c(as.matrix(log(alpha * row['popularity'] + beta*data['root'] + tau^row['lag']) -
+likelihood_post_Gomez2013 <- function(row, alpha, beta, tau){
+  tau <- min(params$tau, 0.999999999) # avoid 1 so that we can keep using the 
+  c(as.matrix(log(alpha * row['popularity'] + beta*row['root'] + tau^row['lag']) -
      log(2*alpha*(row['t']-1)   + beta + tau*(tau^row['t']-1)/(tau-1))))
 }
 
@@ -32,17 +29,25 @@ likelihood_post <- function(row, params){
 #' won't know how to deal with that
 #' @export
 # x100 times faster (for large dataframes)
-likelihood_Gomez2013 <- function(df.trees, params){
-  alpha <- params$alpha
-  beta <- params$beta
-  tau <- max(params$tau, 0.999999999) # avoid 1 so that we can keep using the 
+likelihood_Gomez2013 <- function(df.trees, alpha, beta, tau){
+  tau <- min(tau, 0.999999999) # avoid 1 so that we can keep using the 
                                       # geometric series expansion
   sum(log(alpha*df.trees['popularity'] + beta*df.trees['root'] + tau^df.trees['lag']))-
   sum(log(2*alpha*(df.trees['t']-1)   + beta + tau*(tau^df.trees['t']-1)/(tau-1)))
-  # TODO: review carefully the normalization factor
   # 2* because we consider undirected graph
-  # -1 because root has no outcoming edge
 }
+
+# likelihood_Gomez2013 <- function(df.trees, params){
+#   alpha <- params$alpha
+#   beta <- params$beta
+#   tau <- min(params$tau, 0.999999999) # avoid 1 so that we can keep using the 
+#   # geometric series expansion
+#   sum(log(alpha*df.trees['popularity'] + beta*df.trees['root'] + tau^df.trees['lag']))-
+#     sum(log(2*alpha*(df.trees['t']-1)   + beta + tau*(tau^df.trees['t']-1)/(tau-1)))
+#   # 2* because we consider undirected graph
+# }
+
+
 
 # like Gomez 2013 but does not make the sum
 #' Needed during the EM for matrix computations
@@ -50,7 +55,7 @@ likelihood_Gomez2013 <- function(df.trees, params){
 likelihood_Gomez2013_all <- function(df.trees, params){
   alpha <- params$alpha
   beta <- params$beta
-  tau <- max(params$tau, 0.999999999) # avoid 1 so that we can keep using the 
+  tau <- min(params$tau, 0.999999999) # avoid 1 so that we can keep using the 
                                       # geometric series expansion
   
   log(alpha*df.trees['popularity'] + beta*df.trees['root'] + tau^df.trees['lag'])-
@@ -161,29 +166,6 @@ likelihood_Lumbreras2016 <- function(data, params, responsibilities, pis){
   cat("\nQ: ", Q)
   cat("\nH: ", entropy)
   cat("\nTotal like: ", like, '\n')
-  like
-}
-
-
-# DEPRECATED
-#'Total likelihood of a dataframe using hard assignments from the EM
-#' @param data data.frame with one post per row and features in columns
-#' @param model parameters
-#' @param responsibilities responsibilities of users w.r.t clusters
-#' @return loglikelihood of the dataset
-#' @export
-likelihood_Lumbreras2016_hard <- function(data, params, responsibilities){
-  "This is wrong because a pi factor is missing (a priori probabilities)"
-  alphas <- params$alphas
-  betas <- params$betas
-  taus <- params$taus
-  z <- apply(responsibilities, 1, which.max)
-  like <- 0
-  for (i in 1:nrow(data)){
-    row <- data[i,]
-    k <- z[row$userint]
-    like <- like + likelihood_post(data[i], alphas[k], betas[k], taus[k])
-  }
   like
 }
 

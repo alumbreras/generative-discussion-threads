@@ -9,8 +9,8 @@ estimation_Gomez2013 <- function(df.trees, params=list(alpha=0.5, beta=0.5, tau=
   df.trees <- df.trees %>% select(t, popularity, lag, root)
 
   Qopt <- function(params, df.trees){
-    params <- list(alpha = params[1], beta=params[2], tau=params[3])
-    likelihood_Gomez2013(df.trees, params)
+    #params <- list(alpha = params[1], beta=params[2], tau=params[3])
+    likelihood_Gomez2013(df.trees, params[1], params[2], params[3])
   }
 
   sol <- nmkb(unlist(params), Qopt,

@@ -59,7 +59,9 @@ plot.tree <- function(gtree, labels=c('name', 'id')){
        edge.arrow.size=0.6)
 }
 
-
+#' @title Tree plot
+#' @description Plot a tree from its parents vector
+#' @param parents parents vector
 plot.tree.nicely <- function(parents){
   gtree <- parents_to_tree(parents)
   op <- par(mar = rep(0, 4))
@@ -75,7 +77,10 @@ plot.tree.nicely <- function(parents){
   par(op)
   
 }
-
+#' @title Sequential tree plot
+#' @description Sequantially plot a tree from its parents vector
+#' @param parents parents vector
+#' @param stepsecs seconds between timesteps
 plot.tree.nicely.sequential <- function(parents, stepsecs = 1){
   gtree <- parents_to_tree(parents)
   par(mfrow=c(1,1))
@@ -96,29 +101,6 @@ plot.tree.nicely.sequential <- function(parents, stepsecs = 1){
          vertex.size=3)
     
     Sys.sleep(stepsecs)
-  }
-}
-
-#' Used for the shiny demo 
-plot.tree.nicely.partial <- function(parents, layout,nodes = 1){
-  gtree <- parents_to_tree(parents)
-  op <- par(mar = rep(0, 4))
-  #par(mfrow=c(1,1))
-  gtree.un <- as.undirected(gtree)
-  la = layout_nicely(gtree.un)
-  for(i in 1:min(nodes, vcount(gtree.un))){
-    V(gtree.un)$color <- gray.colors(vcount(gtree.un))
-    V(gtree.un)$frame.color <- "black"
-    V(gtree.un)[1]$color <- "red"
-    V(gtree.un)[V(gtree.un)>i]$color <- "white" # future nodes are invisible
-    V(gtree.un)[V(gtree.un)>i]$frame.color <- "white"
-    E(gtree.un)$color <- "white" # future nodes are invisible
-    E(gtree.un)[E(gtree.un)<i]$color <- "black" # future nodes are invisible
-    
-    plot(gtree.un,
-         layout = la,
-         vertex.label = NA,
-         vertex.size=3)
   }
 }
 

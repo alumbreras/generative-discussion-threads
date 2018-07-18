@@ -39,35 +39,47 @@ gen.thread.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
 #' encodes the parent of the node i
 gen.parentsvector.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
 
+  likelihood <- 0 
+  df.trees <- data.frame()
+  # n-1 parents because root has no parent
   pis <- rep(NA, n-1)
-
-  # First post has no choice
+  
+  # Second post (1st after root) has no choice, always choses the root
   pis[1] <- 1
 
-  for (i in 2:n){
-
-    betas <- c(beta, rep(0, i-1))
-    # Note that the latest post has lag = 0
-    lags <- (i-1):0
+  # Start from the 3rd post (2nd after root), which arrives at t=2
+  for (t in 2:(n-1)){
+    betas <- c(beta, rep(0, t-1))
+    # Note that the latest post has lag = tau
+    lags <- t:1
     # We consider an undirected graph, and every existing node has degree equal to one initially
-    popularities    <- 1 + tabulate(pis, nbins=i)
+    popularities    <- 1 + tabulate(pis, nbins=t)
     # but root has no outcoming link
     popularities[1] <- popularities[1] -1
 
     # Probability of choosing every node (only one is chosen)
-    # probs <- alpha * popularities + betas + tau^lags # classic
-    probs <- alpha*popularities^alpha + betas + tau^lags # kiosque
-    #probs <- alpha*popularities^alpha + betas + lags^(1*tau) # kiosque
-    
+    probs <- alpha * popularities + betas + tau^lags # classic
+
     if(sum(probs) == 0) {
-      probs = rep(1/i, i)
+      probs = rep(1/t, t)
     } else {
       probs <- probs/sum(probs)
     }
-    #cat("\nprobs:", probs)
+
     # Add new vertex attached to the chosen node
-    pis[i] <- sample(length(probs), size=1, prob=probs)
+    pis[t] <- sample(length(probs), size=1, prob=probs)
+    
+    # Store info of choice
+    likelihood <- likelihood +  probs[pis[t]]
+    df.trees <- bind_rows(df.trees, list(post = t+1,
+                                    t=t, 
+                                    parent=pis[t], 
+                                    popularity = popularities[pis[t]],  
+                                    root = ifelse(pis[t]==1, 1,0), 
+                                    lag = lags[pis[t]], 
+                                    likelihood = probs[pis[t]]))
   }
+  print(df.trees)
   pis
 }
 
@@ -140,15 +152,22 @@ tree_to_parents <- function(gtree){
 #' @description  build a dataframe from a parents vector. The dataset reflects
 #' the choice made at every timestep and is a convenient format to compute the likelihood
 parents_to_dataframe <- function(parents){
-  popularities <- c(1,sapply(2:length(parents), 
-                             function(t) 1 + sum(parents[1:(t-1)]==parents[t])))
+  # Hide the value of the first post after the root so that the + 1 extra term
+  # in the degree (to account for output links) can also be used for the root,
+  # which has no output link but has always at least the first input link
+  parents_ <- parents
+  parents_[1] <- -1
+  popularities <- c(0,sapply(2:length(parents), 
+                             function(t) 1 + sum(parents_[1:(t-1)]==parents[t])))
+  
+
   posts <- 2:(length(parents)+1)
   df <- data.frame(post = posts,
                      t = 1:(length(parents)),
                      parent = parents) %>%
           mutate(popularity = popularities,
-                 lag = t-parent+1,
-                 root = ifelse(parent == 1, 1, 0))
+                 root = ifelse(parent == 1, 1, 0),
+                 lag = t-parent+1)
   df
 }
 

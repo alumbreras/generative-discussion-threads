@@ -126,7 +126,7 @@ generate_trees <- function(model, params, sizes, ...){
 }
 
 
-
+#'@title Deprecated. do not use igraph functions
 tree_to_data <- function(g, thread=0){
   # Creates a dataframe with a row per post
   # and columns "degree of parent", "is_parent_root", "lag to parent", and "t"
@@ -189,8 +189,9 @@ tree_to_data <- function(g, thread=0){
 
 
 
-#' Builds a dataframe from a list of trees where every row is a post and every column
-#' is some post feature
+#' @title Deprecated. do not use igraph functions
+#' @description Builds a dataframe from a list of trees where every row is a post 
+#' and every column is some post feature
 #' @param trees a list of igraph trees
 #' @details uses parallelization
 #' @return a dataframe with one row per post

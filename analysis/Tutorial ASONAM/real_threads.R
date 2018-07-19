@@ -2,7 +2,7 @@
 data("df.posts.france")
 
 df.thread <- df.posts %>%
-  group_by(thread) %>% arrange(date) %>%
+  group_by(thread) %>% arrange(date) %>% filter(n()>10) %>%
   mutate(pi = as.integer(match(parent, unique(parent))-1)) %>% 
   ungroup %>%
   arrange(thread, date)
@@ -11,17 +11,6 @@ parents <- df.thread %>% filter(pi > 0) %>% group_by(thread) %>%
   do(thread=.$pi) %>%  ungroup()  %>%
   lapply(function(x) {(x)})
 parents <- parents[[1]]
-
-# Compute structural properties
-df.degrees <- degree_distribution(parents)
-df.degrees$cumprob <- cumsum(df.degrees$frequency/sum(df.degrees$frequency))
-
-ggplot(df.degrees, aes(x=degree, y = frequency)) + 
-  geom_point() +
-  scale_y_log10() +
-  #facet_grid(.~data) +
-  theme_bw() +
-  ylab('CPF')
 
 # Estimate parameters
 df.trees <- all_parents_to_dataframe(parents)  

@@ -9,8 +9,7 @@ tree_from_parents_vector <- function(parents){
   graph_from_edgelist(edges)
 }
 
-#'@title Plot degree distributions
-#'@param parents lists of parent vectors 
+
 compare_degrees <- function(df.data){
   
   df.data$thread <- as.character(df.data$thread)
@@ -24,28 +23,31 @@ compare_degrees <- function(df.data){
   nthreads <- length(threads)
   
   i <- 1
-  for(i in 1:nthreads) {
-     th <- threads[i]
-     df.tree <- df.data %>% filter(thread == th)
-     subforum <- df.data$subforum[1]
-     cat('\nsubforum', subforum, i, '/', nthreads) 
-         
-     # Extract real and generated graphs 
-     g.real <- tree_from_parents_vector(df.tree$parent.real)
-     g.gomez <- tree_from_parents_vector(df.tree$parent.gomez)
-     
-     # Compute metric
-     degrees.real = degree(g.real, mode='all')
-     degrees.gomez = degree(g.gomez, mode='all')
-         
-         
-     df <- data.frame(real = degrees.real,
-                      gomez = degrees.gomez,
-                      subforum = subforum)
-         
-     df.degrees <- rbindlist(df.degrees, df)
-  }
-  
+  df.degrees.list <- foreach(i=1:nthreads, 
+                             .packages=c('igraph', 'dplyr'), 
+                             .export = 'tree_from_parents_vector') %do%{
+                               th <- threads[i]
+                               df.tree <- df.data %>% filter(thread == th)
+                               subforum <- df.data$subforum[1]
+                               cat('\nsubforum', subforum, i, '/', nthreads) 
+                               
+                               # Extract real and generated graphs 
+                               g.real <- tree_from_parents_vector(df.tree$parent.real)
+                               g.lumbreras <- tree_from_parents_vector(df.tree$parent.lumbreras)
+                               g.gomez <- tree_from_parents_vector(df.tree$parent.gomez)
+                               
+                               # Compute metric
+                               degrees.real = degree(g.real, mode='all')
+                               degrees.lumbreras = degree(g.lumbreras, mode='all')
+                               degrees.gomez = degree(g.gomez, mode='all')
+                               
+                               
+                               data.frame(real = degrees.real,
+                                          lumbreras = degrees.lumbreras,
+                                          gomez = degrees.gomez,
+                                          subforum = subforum)
+                             }
+  stopCluster(cl)
   df.degrees <- rbindlist(df.degrees.list)
   
   # Frequency by forum all with dplyr and withour table()
@@ -77,6 +79,7 @@ compare_degrees <- function(df.data){
       legend.title = element_blank(),
       #legend.position = "none",
       aspect.ratio=1) + ylab("probability") 
+  #ggtitle('podemos')
   print(g) 
   ggsave(file=paste0('snam_degree_cumdistribution_', subforum, '.png'), 
          width=200, height=70, units='mm')
@@ -112,12 +115,16 @@ compare_subtrees <- function(df.data){
                              # Extract real and generated graphs 
                              g.real <- tree_from_parents_vector(df.tree$parent.real)
                              g.gomez <- tree_from_parents_vector(df.tree$parent.gomez)
-
+                             g.lumbreras <- tree_from_parents_vector(df.tree$parent.lumbreras)
+                             
                              subtrees.real <- ego_size(g.real, order=1000, mode='in', mindist=1)
                              subtrees.gomez <- ego_size(g.gomez, order=1000, mode='in', mindist=1)
-
+                             subtrees.lumbreras <- ego_size(g.lumbreras, order=1000, mode='in', mindist=1)
+                             
+                             
                              data.frame(real = subtrees.real,
                                         gomez = subtrees.gomez,
+                                        lumbreras = subtrees.lumbreras,
                                         subforum = subforum)
                            }
   stopCluster(cl)

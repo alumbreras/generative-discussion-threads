@@ -1,11 +1,14 @@
-# BUG: Para alpha 0, beta 1, tau 1 deberia todo el mundo ir a la raiz, no?
-# (Repasar el modelo generativo en gen.parents...)
+# Create a set of synthetic thread with parameters alpha, beta, tau. 
+# Find estimation of the parameters  alpha*, beta*, tau* 
+# Compare structural properties of trees generated 
+# with real and estimated parameters
 devtools::load_all()
 
-alpha <- 0.25
-beta <- 0.5
-tau <- 0.75
+alpha <- 0.0
+beta <- 1
+tau <- 0.2
 n <- 100
+
 # Generate an plot synthetic tree ----------------------------------------------
 parents <- gen.parentsvector.Gomez2013(n, alpha, beta, tau) # generate
 plot.tree.nicely(parents)                                      # plot 
@@ -21,13 +24,17 @@ par(mfrow = c(3,3))
 sapply(1:9, function(idtree) plot.tree.nicely(parents[[idtree]])) # Plot some
 
 
-# Store in dataframe format. Each line contains the post id, the chosen parent
+# Estimate paremeters ----------------------------------------------------------
+
+# Store in dataframe format. 
+# Each line contains the post id, the chosen parent
 # and the features of its parent (popularity, lag, root) at the 
 # moment (t) of that choice.
 df.trees <- all_parents_to_dataframe(parents)        
 
+# Grid search of one parameter given the other two 
+# This is useful to see the shape of the likelihood around the MLE.
 par(mfrow = c(3,1))
-# Grid search of one parameter given the otther two
 alpha_grid <- seq(0.5,2, by = 0.01)
 like <- rep(NA, length(alpha_grid))
 for(i in 1:length(alpha_grid)){
@@ -53,17 +60,38 @@ plot(tau_grid, like, xlab = 'tau')
 abline(v=tau, col = 'blue')
 
 # Estimate alpha, beta, tau parameters
-# TODO: we could do an EM and detect groups of trees with different parameters
-# that would be a nice way to classify discussions in a forum.
-# We could even go nonparametric (without conjugacy, but anyway... we could even use VB!)
-# Could we even use NMF? F features, N trees. Features are the parent vector
-# (we should put a F_max) But no. The generative model will not respect the tree 
-# constrains.
 res <- estimation_Gomez2013(df.trees = df.trees, params=list(alpha=0.5, beta=0.6, tau=0.5))
 res
 
+# Generate threads with the estimated parameters
+parents_hat <- replicate(ntrees,
+                         gen.parentsvector.Gomez2013(n, res$alpha, res$beta, res$tau), 
+                         simplify = FALSE)
 
-#####################################################
+# Compare structural properties ------------------------------------------------
 
+# Degree distribution
+df.degrees <- degree_distribution(parents)
+df.degrees_hat <- degree_distribution(parents_hat)
 
+df.degrees$cumprob <- cumsum(df.degrees$frequency/sum(df.degrees$frequency))
+df.degrees_hat$cumprob <- cumsum(
+                      df.degrees_hat$frequency/sum(df.degrees_hat$frequency)
+                      )            
 
+df.degrees$data <- 'real'
+df.degrees_hat$data <- 'estimated'
+df.degrees <- bind_rows(df.degrees, df.degrees_hat)
+ggplot(df.degrees, aes(x=degree, y = cumprob)) + 
+  geom_point() +
+  scale_y_log10() +
+  facet_grid(.~data) +
+  theme_bw() +
+  ylab('CPF')
+
+# Subtree size distribution
+df.subtrees <- degree_distribution(parents)
+df.subtrees_hat <- degree_distribution(parents_hat)
+
+df.subtrees$data <- 'real'
+df.subtrees_hat$data <- 'estimated'

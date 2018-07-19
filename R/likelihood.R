@@ -1,17 +1,18 @@
-# Compute likelihood of trees according to generative model and parameters
-# author: Alberto Lumbreras
-###########################################################################
+# Functions to compute likelihoods of trees 
+# under the different models (Gomez and Lumbreras)
+# Author: Alberto Lumbreras
+
 library(dplyr)
 library(data.table)
 library(igraph)
 library(parallel)
 
 
-#' Likelihood computation using the dataframe
+#' @title Likelihood computation using the dataframe
 #' @param row vector representing a post
-#' @param alpha popularity parameter
-#' @param beta root bias
-#' @param tau recency parameter
+#' @param alpha parameter alpha
+#' @param beta parameter beta
+#' @param tau parameter tau
 #' @return loglikelihood of the post
 #' @export
 likelihood_post_Gomez2013 <- function(row, alpha, beta, tau){
@@ -21,37 +22,29 @@ likelihood_post_Gomez2013 <- function(row, alpha, beta, tau){
 }
 
 
-#' Total likelihood of a dataframe according to Gomez2013
-#' @param data data.frame with one post per row and features in columns.
-#' @param params list of model parameters
+#' @title Gomez likelihood 
+#' @param df.tree data.frame with one post per row and features in columns.
+#' @param alpha parameter alpha
+#' @param beta parameter beta
+#' @param tau parameter tau
 #' @return loglikelihood of the dataset
 #' @details df.tree must not have any non-numerical value since the internal apply
 #' won't know how to deal with that
 #' @export
 # x100 times faster (for large dataframes)
 likelihood_Gomez2013 <- function(df.trees, alpha, beta, tau){
-  tau <- min(tau, 0.999999999) # avoid 1 so that we can keep using the 
-                                      # geometric series expansion
+  # avoid 1 so that we can keep using the # geometric series expansion
+  tau <- min(tau, 0.999999999)
+  
   sum(log(alpha*df.trees['popularity'] + beta*df.trees['root'] + tau^df.trees['lag']))-
   sum(log(2*alpha*(df.trees['t']-1)   + beta + tau*(tau^df.trees['t']-1)/(tau-1)))
-  # 2* because we consider undirected graph
 }
 
-# likelihood_Gomez2013 <- function(df.trees, params){
-#   alpha <- params$alpha
-#   beta <- params$beta
-#   tau <- min(params$tau, 0.999999999) # avoid 1 so that we can keep using the 
-#   # geometric series expansion
-#   sum(log(alpha*df.trees['popularity'] + beta*df.trees['root'] + tau^df.trees['lag']))-
-#     sum(log(2*alpha*(df.trees['t']-1)   + beta + tau*(tau^df.trees['t']-1)/(tau-1)))
-#   # 2* because we consider undirected graph
-# }
 
-
-
-# like Gomez 2013 but does not make the sum
+#'@title Gomez likelihood
+#'@param params list of parameters
+#'@description like Gomez 2013 but does not make the sum
 #' Needed during the EM for matrix computations
-#' @param params list of parameters
 likelihood_Gomez2013_all <- function(df.trees, params){
   alpha <- params$alpha
   beta <- params$beta
@@ -62,6 +55,7 @@ likelihood_Gomez2013_all <- function(df.trees, params){
     log(2*alpha*(df.trees['t']-1)   + beta + tau*(tau^df.trees['t']-1)/(tau-1))
 
 }
+
 
 #' The part of the lower bound that we optimize in the M-step
 #' @param params vector of initial parameters
@@ -108,7 +102,6 @@ Qopt.par <- function(params, data, responsibilities, pis, k){
   stopCluster(cl)
   log(pis[k])*sum(responsibilities[,k]) + sum(a*b)
 }
-
 
 #' Total likelihood of a dataframe according to Lumbreras2016
 #' @param data trees data.frame with one post per row and features in columns
@@ -170,62 +163,3 @@ likelihood_Lumbreras2016 <- function(data, params, responsibilities, pis){
 }
 
 
-########################################################################################
-########################################################################################
-########################################################################################
-########################################################################################
-#' Deprecated b/c it uses igraph keep it just for testing
-#' @param tree
-#' @param alpha popularity parameter
-#' @param beta root bias
-#' @param tau recency parameter
-#' @return loglikelihood of the dataset
-#' @export
-likelihood_Gomez2013_tree <- function(tree, params){
-  # Compute the likelihood of the whole set of trees
-  # Arguments:
-  #   trees: observed list of trees
-  #   alpha.root, alpha.c, beta.root: parameters of the model
-  parents <- get.edgelist(tree, names=FALSE)[,2] # parents vector
-
-  alpha <- params[1]
-  beta <- params[2]
-  tau <- params[3]
-
-  like <- 0
-  for(t in 2:length(parents)){
-    b <- rep(0,t)
-    b[1] <- beta
-    lags <- t:1
-    popularities <- 1 + tabulate(parents[1:(t-1)], nbins=t) # event root has ghost parent (to follow Gomez 2013)
-    probs <- alpha*popularities + b + tau^lags
-    probs <- probs/sum(probs)
-    like <- like + log(probs[parents[t]])
-  }
-like
-}
-
-likelihood_Lumbreras2016_tree_hard <- function(tree, params, responsibilities){
-
-  parents <- get.edgelist(tree, names=FALSE)[,2]
-  like <- 0
-  z <- apply(responsibilities, 1, which.max)
-
-  for(t in 2:length(parents)){
-    k <- z[V(tree)$userint[t+1]] # Attention! t+1, not t, since R first element (t=0) has position 1 in tree
-    alpha <- params$alphas[k]
-    beta <- params$betas[k]
-    tau <- params$taus[k]
-
-    b <- rep(0,t)
-    b[1] <- beta
-    lags <- t:1
-    popularities <- 1 + tabulate(parents[1:(t-1)], nbins=t) # event root has ghost parent (to follow Gomez 2013)
-    probs <- alpha*popularities + b + tau^lags
-    probs <- probs/sum(probs)
-    like <- like + log(probs[parents[t]])
-    cat('\n', t, " ", V(tree)$userint[t+1], " ", log(probs[parents[t]]))
-
-  }
-  like
-}

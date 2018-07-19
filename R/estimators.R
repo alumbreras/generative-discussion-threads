@@ -3,7 +3,8 @@ library(parallel)
 library(foreach)
 library(doParallel)
 
-#' @param df.tree dataframe or table with t, popularity (parent degree) and lag
+#' @title MLE estimation of parameters for Gomez
+#' @param df.trees dataframe or table with t, popularity (parent degree) and lag
 estimation_Gomez2013 <- function(df.trees, params=list(alpha=0.5, beta=0.5, tau=0.5)){
 
   df.trees <- df.trees %>% select(t, popularity, lag, root)

@@ -27,8 +27,8 @@ for(i in 1:length(sizes)){
 # Compare structural properties ------------------------------------------------
 
 # Degree distribution
-df.degrees <- degree_distribution(parents)
-df.degrees_hat <- degree_distribution(parents_hat)
+df.degrees <- struct_degree_distribution(parents)
+df.degrees_hat <- struct_degree_distribution(parents_hat)
 
 df.degrees$cumprob <- cumsum(df.degrees$frequency/sum(df.degrees$frequency))
 df.degrees_hat$cumprob <- cumsum(

@@ -7,12 +7,12 @@ devtools::load_all()
 alpha <- 0.0
 beta <- 1
 tau <- 0.2
-n <- 100
+ntrees <- 100
 
 # Generate an plot synthetic tree ----------------------------------------------
-parents <- gen.parentsvector.Gomez2013(n, alpha, beta, tau) # generate
-plot.tree.nicely(parents)                                      # plot 
-plot.tree.nicely.sequential(parents, stepsecs = 0)             # plot sequential
+parents <- gen.parentsvector.Gomez2013(ntrees, alpha, beta, tau) # generate
+plot.tree.nicely(parents)                                        # plot 
+plot.tree.nicely.sequential(parents, stepsecs = 0)               # plot sequential
 
 
 # Generate N synthetic trees (and plot some) -----------------------------------
@@ -61,7 +61,6 @@ abline(v=tau, col = 'blue')
 
 # Estimate alpha, beta, tau parameters
 res <- estimation_Gomez2013(df.trees = df.trees, params=list(alpha=0.5, beta=0.6, tau=0.5))
-res
 
 # Generate threads with the estimated parameters
 parents_hat <- replicate(ntrees,
@@ -71,15 +70,14 @@ parents_hat <- replicate(ntrees,
 # Compare structural properties ------------------------------------------------
 
 # Degree distribution
-df.degrees <- degree_distribution(parents)
-df.degrees_hat <- degree_distribution(parents_hat)
-
-df.degrees$cumprob <- cumsum(df.degrees$frequency/sum(df.degrees$frequency))
+df.degrees     <- struct_degree_distribution(parents)
+df.degrees_hat <- struct_degree_distribution(parents_hat)
+df.degrees$cumprob     <- cumsum(df.degrees$frequency/sum(df.degrees$frequency))
 df.degrees_hat$cumprob <- cumsum(
-                      df.degrees_hat$frequency/sum(df.degrees_hat$frequency)
-                      )            
+                           df.degrees_hat$frequency/sum(df.degrees_hat$frequency)
+                          )            
 
-df.degrees$data <- 'real'
+df.degrees$data     <- 'real'
 df.degrees_hat$data <- 'estimated'
 df.degrees <- bind_rows(df.degrees, df.degrees_hat)
 ggplot(df.degrees, aes(x=degree, y = cumprob)) + 
@@ -90,8 +88,34 @@ ggplot(df.degrees, aes(x=degree, y = cumprob)) +
   ylab('CPF')
 
 # Subtree size distribution
-df.subtrees <- degree_distribution(parents)
-df.subtrees_hat <- degree_distribution(parents_hat)
+df.subtrees     <- struct_subtree_size_distribution(parents)
+df.subtrees_hat <- struct_subtree_size_distribution(parents_hat)
+df.subtrees$cumprob     <- cumsum(df.subtrees$frequency/sum(df.subtrees$frequency))
+df.subtrees_hat$cumprob <- cumsum(
+                          df.subtrees_hat$frequency/sum(df.subtrees_hat$frequency)
+                        )        
 
-df.subtrees$data <- 'real'
+df.subtrees$data     <- 'real'
 df.subtrees_hat$data <- 'estimated'
+df.subtrees <- bind_rows(df.subtrees, df.subtrees_hat)
+ggplot(df.subtrees, aes(x=degree, y = cumprob)) + 
+  geom_point() +
+  scale_y_log10() +
+  facet_grid(.~data) +
+  theme_bw() +
+  ylab('CPF')
+
+
+# Size vs Depth
+df.sizedepth     <- struct_size_depth(parents)
+df.sizedepth_hat <- struct_size_depth(parents_hat)
+
+df.sizedepth$data     <- 'real'
+df.sizedepth_hat$data <- 'estimated'
+df.sizedepth <- bind_rows(df.sizedepth, df.sizedepth_hat)
+ggplot(df.sizedepth, aes(x=size, y = depth)) + 
+  geom_point() +
+  #scale_y_log10() +
+  facet_grid(.~data) +
+  theme_bw() +
+  xlab(size) + ylab('depth')

@@ -4,3 +4,4 @@
 .Ruserdata
 *.mp4
 *data/
+*.ipynb_checkpoints/

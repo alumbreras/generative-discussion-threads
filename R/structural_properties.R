@@ -1,6 +1,6 @@
 #'@title Degree distribution
 #'@param parents list of parent vectors
-degree_distribution <-function(parents){
+struct_degree_distribution <-function(parents){
   # Create a dataframe with node-degree
   degrees <- c()
   for(pi in parents){
@@ -16,26 +16,48 @@ degree_distribution <-function(parents){
   return(df.degrees)
 }
 
+
 #'@title Distribution of subtrees size
 #'@description The subtree size for node i is the size of the tree 
 #'of the descendants of i 
-subtree_size_distribution <-function(parents){
-  # Create a dataframe with node-degree
-  degrees <- c()
-  for(pi in parents){
-    degrees <- c(degrees, tabulate(pi, nbins=length(pi)))
+#'@value A vector with all the subtree sizes
+struct_subtree_size_distribution <-function(parents){
+  sizes.all <- c()
+  ntrees <- length(parents)
+  for(i in 1:ntrees){
+    if (!(i %% 1000)) { cat("\nProcessed ", i, "/", ntrees) }
+    pi <- parents[[i]]
+    gtree <- tree_from_parents_vector(pi)
+    sizes <- ego_size(gtree, order=1000, mode='in', mindist=1)
+    sizes.all <- c(sizes.all, sizes)
   }
+  
+  # Compute the frequency of each size Include freq. of size 0
+  sizes.name <- 0:max(sizes.all) 
+  frequencies <- tabulate(sizes.all+1)
+  
+  # Create a dataframe degree-frequency
+  df.degrees <- data.frame(size = sizes.name, frequency = frequencies)
+  return(df.degrees)
 }
 
-size_depth <- function(parents){}
 
-# PLOT FUNCTIONS
-
-#'@title Plot a degree distribution
-plot_degree_distribution <-function(df.degrees){
-  ggplot(df.degrees, aes(x=degree, y = cumsum(frequency/sum(frequency)))) + 
-    geom_point() +
-    scale_y_log10() +
-    theme_bw() +
-    ylab('CPF')
+#'@title  Depth vs Size
+#'@params A list of parent vectors
+#'@value  Datafrem with size and depth of each tree
+struct_size_depth <- function(parents){
+  ntrees <- length(parents)
+  df <- c()
+  for(i in 1:ntrees){
+    if (!(i %% 1000)) { cat("\nProcessed ", i, "/", ntrees) }
+    pi <- parents[[i]]
+    gtree <- tree_from_parents_vector(pi)
+    depth <- diameter(gtree)
+    size  <- length(pi)
+    df <- rbind(df, c(size, depth))
+  }
+  names(df) <- c('size', 'depth')
+  return(df)
 }
+
+

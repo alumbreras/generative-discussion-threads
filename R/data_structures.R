@@ -1,3 +1,6 @@
+# Functions to pass from parent vectors to igraph graph objects
+# and vice versa.
+
 #' @title Dataframe from parents vector
 #' @description  build a dataframe from a parents vector. The dataset reflects
 #' the choice made at every timestep and is a convenient format to compute the likelihood

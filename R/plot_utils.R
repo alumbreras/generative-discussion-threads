@@ -37,7 +37,7 @@ grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, 
 #' @details This is a function to fast plot the structure of conversations.
 #' If `label` is NA then no label is used.
 #' @export
-plot.tree <- function(gtree, labels=c('name', 'id')){
+plot.tree.igraph <- function(gtree, labels=c('name', 'id')){
   if (missing(labels)){
     labels <- NA
   }
@@ -59,6 +59,22 @@ plot.tree <- function(gtree, labels=c('name', 'id')){
        edge.arrow.size=0.6)
 }
 
+plot.tree <- function(parents){
+  gtree <- parents_to_tree(parents)
+  op <- par(mar = rep(0, 4))
+
+  V(gtree)$color <- gray.colors(vcount(gtree))
+  V(gtree)[1]$color <- "red"
+  gtree.un <- as.undirected(gtree)
+  la = layout_as_tree(gtree.un, mode='out', root=1)
+  
+  plot(gtree.un,
+       layout = la,
+       vertex.label = NA,
+       vertex.size=3,
+       edge.arrow.size=0.6)
+}
+
 #' @title Tree plot
 #' @description Plot a tree from its parents vector
 #' @param parents parents vector
@@ -75,8 +91,8 @@ plot.tree.nicely <- function(parents){
        vertex.label = NA,
        vertex.size=3)
   par(op)
-  
 }
+
 #' @title Sequential tree plot
 #' @description Sequantially plot a tree from its parents vector
 #' @param parents parents vector

@@ -56,6 +56,7 @@ struct_size_depth <- function(parents){
     size  <- length(pi)
     df <- rbind(df, c(size, depth))
   }
+  df <- as.data.frame(df)
   names(df) <- c('size', 'depth')
   return(df)
 }

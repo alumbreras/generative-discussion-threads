@@ -6,19 +6,54 @@ library(doParallel)
 #' @title MLE estimation of parameters for Gomez
 #' @param df.trees dataframe or table with t, popularity (parent degree) and lag
 estimation_Gomez2013 <- function(df.trees, params=list(alpha=0.5, beta=0.5, tau=0.5)){
-
-  df.trees <- df.trees %>% select(t, popularity, lag, root)
+  stopifnot(params$alpha > 0)
+  stopifnot(params$beta  > 0)
+  stopifnot(params$tau > 0)
+  stopifnot(params$tau < 1)
 
   Qopt <- function(params, df.trees){
-    #params <- list(alpha = params[1], beta=params[2], tau=params[3])
+    #cat("Initial parameters:", params[1], params[2], params[3])
     likelihood_Gomez2013(df.trees, params[1], params[2], params[3])
   }
-
+  
+  df.trees_ <- df.trees %>% select(t, popularity, lag, root)
+  
   sol <- nmkb(unlist(params), Qopt,
-              lower = c(0,0,0), upper = c(Inf, Inf, 1),
+              lower = c(0,0.0001,0.0001), upper = c(Inf, Inf, 1),
               control = list(maximize=TRUE),
-              df.trees = df.trees)
+              df.trees = df.trees_)
 
+  list(alpha = sol$par[1],
+       beta = sol$par[2],
+       tau = sol$par[3],
+       likelihood = sol$value)
+}
+
+#' @title MLE estimation of parameters for Gomez
+#' @description This method can use general optimization algorithms
+#' @param df.trees dataframe or table with t, popularity (parent degree) and lag
+estimation_Gomez2013_other <- function(df.trees, params=list(alpha=0.5, beta=0.5, tau=0.5)){
+  stopifnot(params$alpha > 0)
+  stopifnot(params$beta  > 0)
+  stopifnot(params$tau > 0)
+  stopifnot(params$tau < 1)
+  
+  Qopt <- function(params){
+    #cat("Initial parameters:", params[1], params[2], params[3])
+    if(params[1] <= 0){return(-1000000)}
+    if(params[2] <= 0){return(-1000000)}
+    if(params[3] <= 0){return(-1000000)}
+    if(params[3] >= 1){return(-1000000)}
+    likelihood_Gomez2013(df.trees, params[1], params[2], params[3])
+  }
+  
+  df.trees_ <- df.trees %>% select(t, popularity, lag, root)
+  
+  sol <- optim(params, Qopt , gr = NULL,
+        method = "Nelder-Mead",
+        lower = -Inf, upper = Inf,
+        control = list(fnscale = -1), hessian = FALSE)
+  
   list(alpha = sol$par[1],
        beta = sol$par[2],
        tau = sol$par[3],

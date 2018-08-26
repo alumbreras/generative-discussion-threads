@@ -3,6 +3,7 @@
 # Compare structural properties of trees generated 
 # with real and estimated parameters
 devtools::load_all()
+library(tidyr)
 
 alpha <- 0.0
 beta <- 1
@@ -59,12 +60,61 @@ for(i in 1:length(tau_grid)){
 plot(tau_grid, like, xlab = 'tau')
 abline(v=tau, col = 'blue')
 
+# Estimate parameters many times with different initialization
+# to check robustness and possible bugs
 # Estimate alpha, beta, tau parameters
+alpha <- 2
+beta <- 1
+tau <- 0.5
+
+df.trees <- all_parents_to_dataframe(parents)        
+df.results <- data.frame()
+for(ntrees in c(10, 1000)){
+  
+  # Generate trees
+  parents <- replicate(ntrees,
+                       gen.parentsvector.Gomez2013(n=25, alpha, beta, tau), 
+                       simplify = FALSE)
+  df.trees <- all_parents_to_dataframe(parents)        
+    
+  # Estimate with different init parameters
+  for(xp in 1:10){
+    alpha_0 <- runif(1)*10
+    beta_0  <- runif(1)*10
+    tau_0   <- runif(1, max=0.99)
+    res <- estimation_Gomez2013(df.trees = df.trees, params=list(alpha = alpha_0, beta = beta_0, tau = tau_0))
+    #res <- estimation_Gomez2013(df.trees = df.trees, params=list(alpha = 1, beta=1, tau = 0.2))
+    res$ntrees <- ntrees
+    df.results <- rbind(df.results, res)
+  }
+}
+
+df.errors <- df.results 
+df.errors$alpha <- df.errors$alpha # - alpha
+df.errors$beta <- df.errors$beta   #- beta
+df.errors$tau <- df.errors$tau     #- tau
+df.errors <- gather(df.errors, param, value, -likelihood, -ntrees)
+df.errors$param <- factor(df.errors$param, levels = c("beta", "alpha", "tau"))
+ggplot(df.errors, aes(x=param, y= value)) + 
+  #geom_point() + 
+  geom_boxplot() + ylim(-5,5) +
+  facet_grid(.~ntrees) + theme_bw()
+
+
+# Simulating a real scenario
+alpha <- 1
+beta <- 1
+tau <- 0.5
+ntrees <- 100
+parents <- replicate(ntrees,
+                     gen.parentsvector.Gomez2013(n=100, alpha, beta, tau), 
+                     simplify = FALSE)
+
 res <- estimation_Gomez2013(df.trees = df.trees, params=list(alpha=0.5, beta=0.6, tau=0.5))
 
 # Generate threads with the estimated parameters
 parents_hat <- replicate(ntrees,
-                         gen.parentsvector.Gomez2013(n, res$alpha, res$beta, res$tau), 
+                         gen.parentsvector.Gomez2013(n=100, res$alpha, res$beta, res$tau), 
                          simplify = FALSE)
 
 # Compare structural properties ------------------------------------------------
@@ -98,7 +148,7 @@ df.subtrees_hat$cumprob <- cumsum(
 df.subtrees$data     <- 'real'
 df.subtrees_hat$data <- 'estimated'
 df.subtrees <- bind_rows(df.subtrees, df.subtrees_hat)
-ggplot(df.subtrees, aes(x=degree, y = cumprob)) + 
+ggplot(df.subtrees, aes(x=size, y = cumprob)) + 
   geom_point() +
   scale_y_log10() +
   facet_grid(.~data) +
@@ -118,4 +168,4 @@ ggplot(df.sizedepth, aes(x=size, y = depth)) +
   #scale_y_log10() +
   facet_grid(.~data) +
   theme_bw() +
-  xlab(size) + ylab('depth')
+  xlab("size") + ylab('depth')

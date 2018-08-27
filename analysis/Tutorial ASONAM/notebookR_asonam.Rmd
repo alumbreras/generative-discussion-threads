@@ -1,23 +1,55 @@
 ---
-title: "R Notebook"
+title: "Generative models of online discussion threads"
 output: html_notebook
 ---
 
-In this tutorial, we will learn to model online forums. Chunks can be executed
-with *Ctrl+Shift+Enter*. 
+In this tutorial, we will learn to:
+ 
+ * Represent online conversations in array structures.
+ * Model online forums using the model Gomez 2013.
+ * Check a model.
+ * Extend the current code to new (better?) models.
+ 
+# Preliminaries (10 mins)
+Download R Studio from
+
+* [https://www.rstudio.com/](https://www.rstudio.com/)
+
+Open R Studio and install some packages we will need:
 
 ```{r}
-devtools::load_all() # load the functions of the package
-
-# Requirements:
-#install.packages("igraph")
-#install.packages("ggplot2")
-#install.packages("tidyr")
-#install.packages("dplyr")
+install.packages("igraph")
+install.packages("ggplot2")
+install.packages("tidyr")
+install.packages("dplyr")
 ```
 
 
-## Vector representation of a tree
+Now download our package. You have two options:
+
+* (if you have git): `git clone https://github.com/alumbreras/generative-discussion-threads.git`
+
+* download and unzip [https://github.com/alumbreras/generative-discussion-threads/archive/master.zip](https://github.com/alumbreras/generative-discussion-threads/archive/master.zip)
+
+Open R Studio, and from there open any file from our package. For instance, open this file,
+located at 
+
+    analysis/Tutorial ASONAM/notebookR_asonam.Rmd 
+   
+and then tell R to make this directory its working directory:
+
+    Session -> Set Working Directory -> To Source File Location
+    
+Finally, tell R to load the package (a fake install).
+```{r}
+devtools::load_all() # load the functions of the package
+```
+
+Now we are ready to go!
+
+# Input data (5 mins)
+
+### Basic data structures
 
 We will first learn how to represent the structure and dynamics of an online conversations in a very simple way. We will create its **parents vector**. The parents vector is a vector $\boldsymbol{\pi} = (\pi_1,...,\pi_2)$ where $\pi_t$ contains the parent of node $t$. Our package contains a function that plots the tree corresponding to a parents vector. For the above tree, we would have:
 
@@ -34,19 +66,57 @@ la                <- layout_as_tree(gtree.un, mode='out', root=1)
 plot(gtree.un, layout = la, vertex.size=15)
 ```
 
-## A real conversation
+This structure is can be used for any forum. Thus, given your favorite forum, you can start working with this package as soon as you are able to write your forum as a list of parent vectors.
 
-We will first load some conversations in Reddit to see what do they look like
+The basic structure is therefore a parents vector. However, our current models convert
+these vectors into dataframes with some information that can be easily deduced from the parents vector and which will be needed by our algoritms. For instance, our parent vector from above 
+will be transformed in a dataframe doing
+
+```{r}
+# Vector representation
+parents   <- c(1,2,2,3,4)
+
+# Dataframe representation. Easy to make computations
+df.thread <- parents_to_dataframe(parents) 
+```
+
+
+Where:
+
+    * post:           id of the node
+    * t:              time steps in which the node appeared (root appears at t=0)
+    * parent:         id of parent node
+    * popularity:     degree of parent node just before this node appeared
+    * root:           1 if the parent node is the root
+    * lag (recency):  time steps ellapsed since the parent post appeared.
+    
+
+
+
+### A real conversation
+
+For Reddit forums, monthly dumps (in json format) can be found at:
+
+* [http://files.pushshift.io/reddit/comments/](http://files.pushshift.io/reddit/comments/)
+
+And here is a code to parse one such monthly dumps and save it in a MySQL database:
+
+* [https://github.com/alumbreras/reddit_parser](https://github.com/alumbreras/reddit_parser)
+
+We have already prepared some data from Reddit in the form of dataframes. 
+We can load it, convert it to parent vectors, and plot it:
 
 ```{r}
 data("df.posts.france")
 
+# Create dataframe structure dropping short threads
 df.thread <- df.posts %>%
   group_by(thread) %>% arrange(date) %>% filter(n()>10) %>%
   mutate(pi = as.integer(match(parent, unique(parent))-1)) %>% 
   ungroup %>%
   arrange(thread, date)
 
+# Convert dataframe to list of parent vectors
 parents <- df.thread %>% filter(pi > 0) %>% group_by(thread) %>%  
   do(thread=.$pi) %>%  ungroup()  %>%
   lapply(function(x) {(x)})
@@ -56,24 +126,47 @@ cat('Threads:', length(parents))
 
 # Plot some threads in tree and graph representations
 par(mfrow = c(3,3))
-plot.tree(parents[[1]])
-plot.tree(parents[[2]])
-plot.tree(parents[[3]])
-
-plot.tree.nicely(parents[[1]])
-plot.tree.nicely(parents[[2]])
-plot.tree.nicely(parents[[3]])
+for(i in 1:3){
+  plot.tree(parents[[i]])
+}
 ```
-## Generating synthetic conversations with a growth model
+# Inside the package
 
 Our conversation model is as follows:
 $$
 p(\pi_t) \propto \alpha d_{k,t} + \beta_{k} + \tau^{t-k+1}
 $$
+In our package, we need:
+
+ * This likelihood function.
+    
+         likelihoods.R -> likelihood_post_Gomez2013(df.trees, alpha, beta, tau)
+
+ * An estimation function based upon the likelihood:
+ 
+         estimators.R  -> estimation_Gomez2013(df.trees, params){ 
+         (optimizes objective function likelihood_post_Gomez2013)
+         
+ * A function to generate synthetic data:
+ 
+         thread_generators.R -> gen.parentsvector.Gomez2013(n, alpha, beta, tau)
+         (generates artificial parent vectors)
+ 
+
+Other useful files:
+
+   * **data_structures.R**: functions to convert from parent vectors to dataframes and vice versa.
+   * **structural_properties.R**: functions to compute structural properties of a forum dataset (synthetic or real)
+   * **plot_utils.R**: functions to plot trees, etc.
+
+### Generating synthetic conversations with a growth model (2 mins)
+
+We can chose some parameters for the model and generate artificial threads:
+
 ```{r}
 alpha <- 0.5
 beta <- 1
-tau <- 0.5
+tau <- 0.8
 ntrees <- 500
 n = 100
 parents <- replicate(ntrees,
@@ -86,10 +179,14 @@ for(i in 1:9){
 }
 ```
 
-## Sanity check
+## Sanity check (5 mins)
 
 Before fitting our model to real data, we will perform a sanity check so see whether we can recover the parameters of ou synthetic trees.
 
+First, let us see whether, the likelihood function for a given parameter given the others peaks
+around the true value:
+
+For alpha:
 ```{r}
 par(mfrow = c(3,1))
 
@@ -102,7 +199,10 @@ for(i in 1:length(alpha_grid)){
 }
 plot(alpha_grid, like, xlab = 'alpha')
 abline(v=alpha, col = 'blue')
+```
 
+For beta:
+```{r}
 beta_grid <- seq(0,2, by = 0.1)
 like <- rep(NA, length(beta_grid))
 for(i in 1:length(beta_grid)){
@@ -110,7 +210,10 @@ for(i in 1:length(beta_grid)){
 }
 plot(beta_grid, like, xlab = 'beta')
 abline(v=beta, col = 'blue')
+```
 
+For tau:
+```{r}
 tau_grid <- seq(0,1, by = 0.05)
 like <- rep(NA, length(tau_grid))
 for(i in 1:length(tau_grid)){
@@ -119,6 +222,11 @@ for(i in 1:length(tau_grid)){
 plot(tau_grid, like, xlab = 'tau')
 abline(v=tau, col = 'blue')
 ```
+
+
+Now, we can check whether, for **different parameter initializations**, we get find
+the true parameters:
+
 ```{r}
 alpha <- 0.5
 beta <- 1
@@ -157,7 +265,7 @@ ggplot(df.errors, aes(x=param, y= value)) +
   facet_grid(.~ntrees) + theme_bw()
 ```
 
-## Find model parameters that fit real conversations 
+## Find model parameters that fit real conversations (2 mins)
 
 Now we the parameters to the real threads.
 
@@ -191,7 +299,7 @@ res <- estimation_Gomez2013(df.trees = df.trees, params=list(alpha=0.5, beta=0.6
 res
 ```
 
-## Compare structural properties
+## Compare structural properties (5 mins)
 
 Finally, we check whether our model reproduces the structural properties of the real data.
 
@@ -225,6 +333,10 @@ ggplot(df.degrees, aes(x=degree, y = cumprob)) +
   facet_grid(.~data) +
   theme_bw() +
   ylab('CPF')
+```
+
+
+```{r}
 
 # Subtree size distribution
 df.subtrees     <- struct_subtree_size_distribution(parents)
@@ -243,8 +355,10 @@ ggplot(df.subtrees, aes(x=size, y = cumprob)) +
   facet_grid(.~data) +
   theme_bw() +
   ylab('CPF')
+```
 
 
+```{r}
 # Size vs Depth
 df.sizedepth     <- struct_size_depth(parents)
 df.sizedepth_hat <- struct_size_depth(parents_hat)
@@ -260,3 +374,10 @@ ggplot(df.sizedepth, aes(x=size, y = depth)) +
   xlab("size") + ylab('depth')
 ```
 
+# Extra points
+
+Adapt the code to other models, such as Barabasi: 
+
+$$
+p(\pi_t) \propto d_{k,t}^\alpha
+$$

@@ -1,0 +1,262 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+In this tutorial, we will learn to model online forums. Chunks can be executed
+with *Ctrl+Shift+Enter*. 
+
+```{r}
+devtools::load_all() # load the functions of the package
+
+# Requirements:
+#install.packages("igraph")
+#install.packages("ggplot2")
+#install.packages("tidyr")
+#install.packages("dplyr")
+```
+
+
+## Vector representation of a tree
+
+We will first learn how to represent the structure and dynamics of an online conversations in a very simple way. We will create its **parents vector**. The parents vector is a vector $\boldsymbol{\pi} = (\pi_1,...,\pi_2)$ where $\pi_t$ contains the parent of node $t$. Our package contains a function that plots the tree corresponding to a parents vector. For the above tree, we would have:
+
+```{r}
+# Vector representation
+parents           <- c(1,2,2,3,4)
+
+# Plot it as a tree
+gtree             <- parents_to_tree(parents)
+V(gtree)$color    <- gray.colors(vcount(gtree)) # all nodes are grey
+V(gtree)[1]$color <- "red"                      # except the root
+gtree.un          <- as.undirected(gtree)       
+la                <- layout_as_tree(gtree.un, mode='out', root=1)
+plot(gtree.un, layout = la, vertex.size=15)
+```
+
+## A real conversation
+
+We will first load some conversations in Reddit to see what do they look like
+
+```{r}
+data("df.posts.france")
+
+df.thread <- df.posts %>%
+  group_by(thread) %>% arrange(date) %>% filter(n()>10) %>%
+  mutate(pi = as.integer(match(parent, unique(parent))-1)) %>% 
+  ungroup %>%
+  arrange(thread, date)
+
+parents <- df.thread %>% filter(pi > 0) %>% group_by(thread) %>%  
+  do(thread=.$pi) %>%  ungroup()  %>%
+  lapply(function(x) {(x)})
+parents <- parents[[1]]
+
+cat('Threads:', length(parents))
+
+# Plot some threads in tree and graph representations
+par(mfrow = c(3,3))
+plot.tree(parents[[1]])
+plot.tree(parents[[2]])
+plot.tree(parents[[3]])
+
+plot.tree.nicely(parents[[1]])
+plot.tree.nicely(parents[[2]])
+plot.tree.nicely(parents[[3]])
+```
+## Generating synthetic conversations with a growth model
+
+Our conversation model is as follows:
+$$
+p(\pi_t) \propto \alpha d_{k,t} + \beta_{k} + \tau^{t-k+1}
+$$
+```{r}
+alpha <- 0.5
+beta <- 1
+tau <- 0.5
+ntrees <- 500
+n = 100
+parents <- replicate(ntrees,
+                     gen.parentsvector.Gomez2013(n, alpha, beta, tau), 
+                     simplify = FALSE)
+
+par(mfrow = c(3,3))
+for(i in 1:9){
+  plot.tree(parents[[i]])
+}
+```
+
+## Sanity check
+
+Before fitting our model to real data, we will perform a sanity check so see whether we can recover the parameters of ou synthetic trees.
+
+```{r}
+par(mfrow = c(3,1))
+
+df.trees <- all_parents_to_dataframe(parents)        
+
+alpha_grid <- seq(0.1,5, by = 0.05)
+like <- rep(NA, length(alpha_grid))
+for(i in 1:length(alpha_grid)){
+  like[i] <- likelihood_Gomez2013(df.trees, alpha_grid[i], beta, tau)
+}
+plot(alpha_grid, like, xlab = 'alpha')
+abline(v=alpha, col = 'blue')
+
+beta_grid <- seq(0,2, by = 0.1)
+like <- rep(NA, length(beta_grid))
+for(i in 1:length(beta_grid)){
+  like[i] <- likelihood_Gomez2013(df.trees, alpha=alpha, beta_grid[i], tau)
+}
+plot(beta_grid, like, xlab = 'beta')
+abline(v=beta, col = 'blue')
+
+tau_grid <- seq(0,1, by = 0.05)
+like <- rep(NA, length(tau_grid))
+for(i in 1:length(tau_grid)){
+  like[i] <- likelihood_Gomez2013(df.trees, alpha, beta, tau_grid[i])
+}
+plot(tau_grid, like, xlab = 'tau')
+abline(v=tau, col = 'blue')
+```
+```{r}
+alpha <- 0.5
+beta <- 1
+tau <- 0.5
+ntrees <- 500
+n = 100
+
+df.trees <- all_parents_to_dataframe(parents)        
+df.results <- data.frame()
+for(ntrees in c(10, 1000)){
+  # Generate trees
+  parents <- replicate(ntrees, gen.parentsvector.Gomez2013(n, alpha, beta, tau), simplify = FALSE)
+  df.trees <- all_parents_to_dataframe(parents)        
+    
+  # Estimate with different init parameters
+  for(xp in 1:10){
+    alpha_0 <- runif(1)
+    beta_0  <- runif(1)*10
+    tau_0   <- runif(1, max=0.99)
+    res <- estimation_Gomez2013(df.trees = df.trees, params=list(alpha_0, beta_0, tau_0))
+    res$ntrees <- ntrees
+    df.results <- rbind(df.results, res)
+  }
+}
+
+library(tidyr)
+df.errors <- df.results 
+df.errors$alpha <- df.errors$alpha - alpha
+df.errors$beta <- df.errors$beta   - beta
+df.errors$tau <- df.errors$tau     - tau
+df.errors <- gather(df.errors, param, value, -likelihood, -ntrees)
+df.errors$param <- factor(df.errors$param, levels = c("beta", "alpha", "tau"))
+ggplot(df.errors, aes(x=param, y= value)) + 
+  geom_point() + 
+  #geom_boxplot() + ylim(-5,5) +
+  facet_grid(.~ntrees) + theme_bw()
+```
+
+## Find model parameters that fit real conversations 
+
+Now we the parameters to the real threads.
+
+```{r}
+# Load again the real data
+data("df.posts.france")
+
+df.thread <- df.posts %>%
+  group_by(thread) %>% arrange(date) %>% filter(n()>10) %>%
+  mutate(pi = as.integer(match(parent, unique(parent))-1)) %>% 
+  ungroup %>%
+  arrange(thread, date)
+
+parents <- df.thread %>% filter(pi > 0) %>% group_by(thread) %>%  
+  do(thread=.$pi) %>%  ungroup()  %>%
+  lapply(function(x) {(x)})
+parents <- parents[[1]]
+
+cat('Threads:', length(parents))
+
+# Estimate parameters ----------------------------------------------------------
+
+# Store in dataframe format. 
+# Each line contains the post id, the chosen parent
+# and the features of its parent (popularity, lag, root) at the 
+# moment (t) of that choice.
+df.trees <- all_parents_to_dataframe(parents)        
+
+# Estimate alpha, beta, tau parameters
+res <- estimation_Gomez2013(df.trees = df.trees, params=list(alpha=0.5, beta=0.6, tau=0.5))
+res
+```
+
+## Compare structural properties
+
+Finally, we check whether our model reproduces the structural properties of the real data.
+
+```{r}
+# Generate threads with the estimated parameters
+sizes <- sapply(parents, function(x) length(x))
+parents_hat <- list()
+for(i in 1:length(sizes)){
+  parents_hat[[i]] <- gen.parentsvector.Gomez2013(sizes[i], res$alpha, res$beta, res$tau)
+}
+```
+
+
+```{r}
+# Compare structural properties ------------------------------------------------
+
+# Degree distribution
+df.degrees     <- struct_degree_distribution(parents)
+df.degrees_hat <- struct_degree_distribution(parents_hat)
+df.degrees$cumprob     <- cumsum(df.degrees$frequency/sum(df.degrees$frequency))
+df.degrees_hat$cumprob <- cumsum(
+  df.degrees_hat$frequency/sum(df.degrees_hat$frequency)
+)            
+
+df.degrees$data     <- 'real'
+df.degrees_hat$data <- 'estimated'
+df.degrees <- bind_rows(df.degrees, df.degrees_hat)
+ggplot(df.degrees, aes(x=degree, y = cumprob)) + 
+  geom_point() +
+  scale_y_log10() +
+  facet_grid(.~data) +
+  theme_bw() +
+  ylab('CPF')
+
+# Subtree size distribution
+df.subtrees     <- struct_subtree_size_distribution(parents)
+df.subtrees_hat <- struct_subtree_size_distribution(parents_hat)
+df.subtrees$cumprob     <- cumsum(df.subtrees$frequency/sum(df.subtrees$frequency))
+df.subtrees_hat$cumprob <- cumsum(
+  df.subtrees_hat$frequency/sum(df.subtrees_hat$frequency)
+)        
+
+df.subtrees$data     <- 'real'
+df.subtrees_hat$data <- 'estimated'
+df.subtrees <- bind_rows(df.subtrees, df.subtrees_hat)
+ggplot(df.subtrees, aes(x=size, y = cumprob)) + 
+  geom_point() +
+  scale_y_log10() +
+  facet_grid(.~data) +
+  theme_bw() +
+  ylab('CPF')
+
+
+# Size vs Depth
+df.sizedepth     <- struct_size_depth(parents)
+df.sizedepth_hat <- struct_size_depth(parents_hat)
+
+df.sizedepth$data     <- 'real'
+df.sizedepth_hat$data <- 'estimated'
+df.sizedepth <- bind_rows(df.sizedepth, df.sizedepth_hat)
+ggplot(df.sizedepth, aes(x=size, y = depth)) + 
+  geom_point() +
+  scale_y_log10() +
+  facet_grid(.~data) +
+  theme_bw() +
+  xlab("size") + ylab('depth')
+```
+

@@ -5,9 +5,9 @@
 devtools::load_all()
 library(tidyr)
 
-alpha <- 0.0
+alpha <- 1
 beta <- 1
-tau <- 0.2
+tau <- 0.5
 ntrees <- 100
 
 # Generate an plot synthetic tree ----------------------------------------------

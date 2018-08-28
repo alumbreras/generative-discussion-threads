@@ -18,10 +18,11 @@ Download R Studio from
 Open R Studio and install some packages we will need:
 
 ```{r}
-install.packages("igraph")
-install.packages("ggplot2")
-install.packages("tidyr")
-install.packages("dplyr")
+install.packages("igraph")   # Classic R package for graphs
+install.packages("ggplot2")  # Classic R package for plots
+install.packages("tidyr")    # Classic R package to manipulate data
+install.packages("dplyr")    # Classic R package to manipulate data
+install.packages("dfoptim")  # R package with Nelder-Mead optimizer
 ```
 
 
@@ -77,7 +78,8 @@ will be transformed in a dataframe doing
 parents   <- c(1,2,2,3,4)
 
 # Dataframe representation. Easy to make computations
-df.thread <- parents_to_dataframe(parents) 
+df.thread <- parents_to_dataframe(parents)
+df.thread
 ```
 
 
@@ -188,7 +190,7 @@ around the true value:
 
 For alpha:
 ```{r}
-par(mfrow = c(3,1))
+par(mfrow = c(1,1))
 
 df.trees <- all_parents_to_dataframe(parents)        
 
@@ -230,7 +232,7 @@ the true parameters:
 ```{r}
 alpha <- 0.5
 beta <- 1
-tau <- 0.5
+tau <- 0.8
 ntrees <- 500
 n = 100
 
@@ -330,6 +332,7 @@ df.degrees <- bind_rows(df.degrees, df.degrees_hat)
 ggplot(df.degrees, aes(x=degree, y = cumprob)) + 
   geom_point() +
   scale_y_log10() +
+  scale_x_log10() + 
   facet_grid(.~data) +
   theme_bw() +
   ylab('CPF')
@@ -352,6 +355,7 @@ df.subtrees <- bind_rows(df.subtrees, df.subtrees_hat)
 ggplot(df.subtrees, aes(x=size, y = cumprob)) + 
   geom_point() +
   scale_y_log10() +
+  scale_x_log10() + 
   facet_grid(.~data) +
   theme_bw() +
   ylab('CPF')

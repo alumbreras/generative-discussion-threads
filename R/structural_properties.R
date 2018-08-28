@@ -27,7 +27,7 @@ struct_subtree_size_distribution <-function(parents){
   for(i in 1:ntrees){
     if (!(i %% 1000)) { cat("\nProcessed ", i, "/", ntrees) }
     pi <- parents[[i]]
-    gtree <- tree_from_parents_vector(pi)
+    gtree <- parents_to_tree(pi)
     sizes <- ego_size(gtree, order=1000, mode='in', mindist=1)
     sizes.all <- c(sizes.all, sizes)
   }
@@ -51,7 +51,7 @@ struct_size_depth <- function(parents){
   for(i in 1:ntrees){
     if (!(i %% 1000)) { cat("\nProcessed ", i, "/", ntrees) }
     pi <- parents[[i]]
-    gtree <- tree_from_parents_vector(pi)
+    gtree <- parents_to_tree(pi)
     depth <- diameter(gtree)
     size  <- length(pi)
     df <- rbind(df, c(size, depth))

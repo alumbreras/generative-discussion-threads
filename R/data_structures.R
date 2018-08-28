@@ -51,3 +51,11 @@ parents_to_tree <- function(parents){
   edges <- t(rbind(2:size, parents))
   graph_from_edgelist(edges)
 }
+
+#' @title Tree from 
+tree_from_parents_vector <- function(parents){
+  size <- length(parents)+1
+  g <- graph.empty(n=size)
+  edges <- t(rbind(2:size, parents))
+  graph_from_edgelist(edges)
+}

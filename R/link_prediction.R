@@ -34,7 +34,6 @@ compare_link_prediction2 <- function(df.tree, params.lumbreras, params.gomez, pa
     chosen <- parents[t]
 
     # Gomez 2013
-    #######################
     alpha <- params.gomez$alpha
     beta <- params.gomez$beta
     tau <- params.gomez$tau
@@ -46,7 +45,6 @@ compare_link_prediction2 <- function(df.tree, params.lumbreras, params.gomez, pa
     ranking.gomez <- rank(-probs.gomez)[chosen]
 
     # Gomez 2013 Plus
-    #######################
     alpha <- params.gomezplus$alpha
     beta <- params.gomezplus$beta
     tau <- params.gomezplus$tau
@@ -59,7 +57,6 @@ compare_link_prediction2 <- function(df.tree, params.lumbreras, params.gomez, pa
     ranking.gomezplus <- rank(-probs.gomezplus)[chosen]
 
     # Lumbreras 2016
-    ############################
     if(TRUE){
       #k <- z[V(tree)$userint[t+1]] # Attention to the t+1!
       k <- z[t]
@@ -107,7 +104,6 @@ compare_link_prediction2 <- function(df.tree, params.lumbreras, params.gomez, pa
     time.to.root <- df.tree$date[t]
 
     # Barabasi (only alpha)
-    ######################################
     probs.barabasi <- alpha*popularities
 
     predicted.barabasi <- which.max(alpha*popularities)
@@ -115,7 +111,6 @@ compare_link_prediction2 <- function(df.tree, params.lumbreras, params.gomez, pa
     ranking.barabasi <- rank(-probs.barabasi)[chosen]
 
     # Naive sorted (the more recent, the more likely)
-    #################################################
     probs.tau <- tau^lags
 
     predicted.tau <-  which.max(probs.tau)
@@ -123,7 +118,6 @@ compare_link_prediction2 <- function(df.tree, params.lumbreras, params.gomez, pa
     ranking.tau <- rank(-probs.tau)[chosen]
 
     # Naive sorted inverse (the older, the more likely)
-    ###################################################
     probs.tau.inv <- tau^lags.inv
 
     predicted.tau.inv <-  which.max(probs.tau.inv)

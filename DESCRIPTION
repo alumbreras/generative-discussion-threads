@@ -1,6 +1,6 @@
 Package: genthreads
 Type: Package
-Title: Generate synthetic threads, or load real ones, and estimate its parameters according to different generative models.
+Title: Generative models of online discussion threads.
 Version: 0.1.0
 Author: person("Alberto", "Lumbreras", email = "alberto.lumbreras@irit.fr", role = "cre")
 Maintainer: Alberto Lumbreras <alberto.lumbreras@irit.fr>

@@ -42,16 +42,6 @@ gen.parentsvector.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
 
     # Add new vertex attached to the chosen node
     pis[t] <- sample(length(probs), size=1, prob=probs)
-    
-    # Store info of choice (deprecated)
-    # likelihood <- likelihood +  probs[pis[t]]
-    # df.trees <- bind_rows(df.trees, list(post = t+1,
-    #                                 t=t, 
-    #                                 parent=pis[t], 
-    #                                 popularity = popularities[pis[t]],  
-    #                                 root = ifelse(pis[t]==1, 1,0), 
-    #                                 lag = lags[pis[t]], 
-    #                                 likelihood = probs[pis[t]]))
   }
   return(pis)
 }

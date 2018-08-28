@@ -32,7 +32,7 @@ gen.parentsvector.Gomez2013 <- function(n=100, alpha=1, beta = 1, tau=0.75){
     popularities[1] <- popularities[1] -1
 
     # Probability of choosing every node (only one is chosen)
-    probs <- alpha * popularities + betas + tau^lags # classic
+    probs <- alpha * popularities + betas + tau^lags
 
     if(sum(probs) == 0) {
       probs = rep(1/t, t)
